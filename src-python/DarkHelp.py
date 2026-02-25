@@ -14,7 +14,7 @@ import os
 if os.name == "posix":
     libpath = "/usr/lib/libdarkhelp.so"
 elif os.name == "nt":
-    libpath = "C:/Program Files/darknet/bin/darkhelp.dll"
+    libpath = "C:/Program Files/darkhelp/bin/darkhelp.dll"
 else:
     print("unknown OS")
     exit
