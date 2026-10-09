@@ -25,12 +25,26 @@ ELSE ()
 	INSTALL ( FILES DarkHelp.ico DESTINATION bin )
 	# more complicated install for Windows so we also get the .DLL files copied over from vcpkg
 	# https://stackoverflow.com/a/72088102/13022
-	# note you may also need to manually copy over darknet.dll!
+	#
+	# vcpkg copies the 3rd-party DLLs next to each .exe, but not darknet.dll or the DLLs that only darknet.dll needs
+	# (e.g. openblas.dll in CPU-only builds).  Copy those next to each .exe too, so every runtime dependency is found
+	# in a single directory.  Searching several directories (such as src-lib/Release) fails with "conflicting paths"
+	# since vcpkg puts identical copies of the same DLLs (e.g. abseil_dll.dll) in each of them.
+	GET_FILENAME_COMPONENT (DARKNET_BIN_DIR "${DARKNET_PARENT_DIR}/../bin" ABSOLUTE)
+	FOREACH (target cli server combine)
+		FOREACH (dll darknet.dll openblas.dll)
+			IF (EXISTS "${DARKNET_BIN_DIR}/${dll}")
+				ADD_CUSTOM_COMMAND (TARGET ${target} POST_BUILD
+					COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DARKNET_BIN_DIR}/${dll}" "$<TARGET_FILE_DIR:${target}>")
+			ENDIF ()
+		ENDFOREACH ()
+	ENDFOREACH ()
+
 	INSTALL (TARGETS cli server combine DESTINATION bin
 		RUNTIME_DEPENDENCIES
-			PRE_EXCLUDE_REGEXES "api-ms-" "ext-ms-" "wpaxholder" "HvsiFileTrust" "PdmUtilities"
+			# darkhelp.dll is installed by src-lib
+			PRE_EXCLUDE_REGEXES "api-ms-" "ext-ms-" "wpaxholder" "HvsiFileTrust" "PdmUtilities" "[Dd]ark[Hh]elp\\.dll"
 			POST_EXCLUDE_REGEXES ".*system32/.*\\.dll"
-			DIRECTORIES ${CMAKE_BINARY_DIR}/bin ${CMAKE_BINARY_DIR}/src-lib/Release/ ${CMAKE_BINARY_DIR}/src-lib/Debug/
 		RUNTIME DESTINATION bin
 		)
 ENDIF ()
